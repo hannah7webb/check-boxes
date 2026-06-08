@@ -572,15 +572,16 @@ export default function Home() {
       {showOnboarding && (
         <div className="animate-summary-backdrop fixed inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
           <div className="animate-summary-card bg-white dark:bg-zinc-900 rounded-3xl p-8 shadow-xl w-full max-w-xs sm:max-w-sm">
-            <p className={`${sectionLabel} text-center mb-6`}>check boxes</p>
+            <p className={`${sectionLabel} text-center mb-1`}>check boxes</p>
+            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 text-center mb-3">Daily Productivity Tool</p>
             <h2 className="text-lg font-semibold tracking-tight text-zinc-950 dark:text-white text-center mb-6">How it works</h2>
 
             <ol className="space-y-4 mb-8">
               {[
                 ['Set your day', 'Drag the time slider to frame your working hours.'],
-                ['Make a prediction', 'Estimate what % of your tasks you think you will finish.'],
-                ['Work through your list', 'Add tasks and check them off as you go.'],
-                ['See how you did', 'At the end of the day, a summary shows your completion and prediction accuracy.'],
+                ['Make a prediction', 'Estimate what % of tasks you think you will finish.'],
+                ['Work through your list', 'Add daily tasks and check them off as you go.'],
+                ['See how you did', 'At the end of the day, receive a summary of your completion and prediction accuracy.'],
               ].map(([title, desc], i) => (
                 <li key={i} className="flex gap-3.5">
                   <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-600 tabular-nums mt-0.5 shrink-0">{i + 1}</span>
