@@ -492,7 +492,7 @@ export default function Home() {
             </ul>
           )}
 
-          <div className="relative">
+          <div className="flex gap-2">
             <input
               ref={inputRef}
               type="text"
@@ -500,11 +500,11 @@ export default function Home() {
               onChange={e => setNewTask(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addTask()}
               placeholder="New task..."
-              className="w-full pl-3.5 pr-3.5 sm:pr-12 py-2.5 sm:py-3 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-300 dark:focus:border-zinc-600 shadow-sm transition-colors duration-150"
+              className="flex-1 px-3.5 py-2.5 sm:py-3 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-300 dark:focus:border-zinc-600 shadow-sm transition-colors duration-150"
             />
             <button
               onClick={addTask}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 hidden sm:flex items-center justify-center bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-700 active:scale-[0.97] transition-all duration-150"
+              className="px-4 py-2.5 sm:py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded-xl hover:bg-zinc-300 dark:hover:bg-zinc-700 active:scale-[0.97] transition-all duration-150"
             >
               +
             </button>
