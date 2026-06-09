@@ -496,14 +496,14 @@ const today       = getTodayKey();
                   style={{ left: `${her === null ? actualPct : her}%` }}
                 />
               </div>
-              {(her !== null || actualPct > 0) && (
+              {her !== null && (
                 <div className="relative h-8 mt-1">
                   <div
-                    className="absolute -translate-x-1/2 flex flex-col items-center transition-[left] duration-700 ease-out"
-                    style={{ left: `${her === null ? actualPct : her}%` }}
+                    className="absolute -translate-x-1/2 flex flex-col items-center"
+                    style={{ left: `${her}%` }}
                   >
                     <span className="text-[9px] text-zinc-400 dark:text-zinc-600 whitespace-nowrap">historic execution rate</span>
-                    <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">{her === null ? actualPct : her}%</span>
+                    <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">{her}%</span>
                   </div>
                 </div>
               )}
