@@ -270,6 +270,7 @@ export default function Home() {
   const card        = 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800';
   const her         = stats.historicExecutionRate;
   const projectedHer = her === null ? actualPct : Math.round((her + actualPct) / 2);
+  const hasHistory  = Object.values(records).some(r => r.finalized);
 
   // ── Graph ──────────────────────────────────────────────────────────────────
   const CHART_H = 64;
@@ -405,12 +406,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Score — always visible */}
-        <section className={`${card} rounded-2xl px-4 pt-4 pb-4 sm:px-5 sm:pt-5 sm:pb-5 shadow-sm`}>
+        {/* Score — visible when tasks exist or there's history */}
+        {(tasks.length > 0 || hasHistory) && <section className={`${card} rounded-2xl px-4 pt-4 pb-4 sm:px-5 sm:pt-5 sm:pb-5 shadow-sm`}>
 
-          {/* Today's Progress — only when tasks exist */}
-          {tasks.length > 0 && (
-            <div className="mb-4 pb-4 border-b border-zinc-100 dark:border-zinc-800">
+          {tasks.length > 0 && <div className={tasks.length > 0 && hasHistory ? 'mb-4 pb-4 border-b border-zinc-100 dark:border-zinc-800' : ''}>
               <div className="flex items-center justify-between mb-2">
                 <span className={sectionLabel}>Today's Progress</span>
                 <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">{actualPct}%</span>
@@ -438,8 +437,7 @@ export default function Home() {
                   </span>
                 </div>
               )}
-            </div>
-          )}
+            </div>}
 
           {/* Execution History */}
           <div>
@@ -520,7 +518,7 @@ export default function Home() {
             </div>
           </div>
 
-        </section>
+        </section>}
 
       </div>
 
