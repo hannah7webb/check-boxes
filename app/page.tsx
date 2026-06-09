@@ -138,6 +138,7 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [newTask, setNewTask]           = useState('');
   const [showSummary, setShowSummary]   = useState(false);
+  const [summaryData, setSummaryData]   = useState<{ completed: number; total: number; pct: number } | null>(null);
   const [graphView, setGraphView]       = useState<'week' | 'month'>('week');
   const [recurring, setRecurring]       = useState<RecurringTask[]>([]);
   const inputRef         = useRef<HTMLInputElement>(null);
@@ -207,6 +208,11 @@ export default function Home() {
       const cur     = loadStats();
       const updated = catchUpAllMissedDays(prevDateKey, liveTasksRef.current, cur);
       if (updated !== cur) { localStorage.setItem(STATS_KEY, JSON.stringify(updated)); setStats(updated); }
+      const prevTasks = liveTasksRef.current;
+      const prevCompleted = prevTasks.filter(t => t.completed).length;
+      const prevTotal = prevTasks.length;
+      const prevPct = prevTotal === 0 ? 0 : Math.round((prevCompleted / prevTotal) * 100);
+      setSummaryData({ completed: prevCompleted, total: prevTotal, pct: prevPct });
       setRecords(loadRecords());
       setState({ dateKey: todayKey, tasks: makeRecurringTasks(loadRecurring()) });
       setShowSummary(true);
@@ -645,8 +651,8 @@ const today       = getTodayKey();
             onClick={e => e.stopPropagation()}
           >
             <p className={`${sectionLabel} text-center mb-7`}>End of day</p>
-            <p className="text-5xl font-semibold tracking-tight text-zinc-950 dark:text-white text-center tabular-nums mb-1">{actualPct}%</p>
-            <p className="text-sm text-zinc-400 text-center mb-8">tasks completed</p>
+            <p className="text-5xl font-semibold tracking-tight text-zinc-950 dark:text-white text-center tabular-nums mb-1">{summaryData?.pct ?? 0}%</p>
+            <p className="text-sm text-zinc-400 text-center mb-8">{summaryData ? `${summaryData.completed} of ${summaryData.total} task${summaryData.total === 1 ? '' : 's'} completed` : 'tasks completed'}</p>
             <div className="space-y-2.5 mb-8">
               <div className="flex items-center justify-between bg-zinc-100 dark:bg-zinc-800 rounded-2xl px-4 py-3">
                 <span className="text-sm text-zinc-500 dark:text-zinc-400">Historic Execution Rate</span>
