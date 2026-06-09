@@ -156,7 +156,17 @@ export default function Home() {
       const updated = catchUpAllMissedDays(loaded.dateKey, loaded.tasks, loadedStats);
       if (updated !== loadedStats) localStorage.setItem(STATS_KEY, JSON.stringify(updated));
       setStats(updated);
-      setState(loaded.dateKey !== todayKey ? { dateKey: todayKey, tasks: makeRecurringTasks(loadRecurring()) } : loaded);
+      if (loaded.dateKey !== todayKey) {
+        setState({ dateKey: todayKey, tasks: makeRecurringTasks(loadRecurring()) });
+      } else if (loadedStats.lastUpdatedDate === null && loaded.tasks.length === 0) {
+        setState({ dateKey: todayKey, tasks: [
+          { id: crypto.randomUUID(), title: 'just',  completed: false },
+          { id: crypto.randomUUID(), title: 'check', completed: false },
+          { id: crypto.randomUUID(), title: 'boxes', completed: false },
+        ]});
+      } else {
+        setState(loaded);
+      }
     } else {
       setState(loaded);
       setStats(loadedStats);
