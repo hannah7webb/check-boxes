@@ -460,7 +460,7 @@ const today       = getTodayKey();
                   </button>
                   <button
                     onClick={() => removeTask(task.id)}
-                    className="opacity-0 group-hover:opacity-100 text-zinc-400 dark:text-zinc-600 hover:text-zinc-500 dark:hover:text-zinc-400 transition-all duration-150 text-lg leading-none"
+                    className="opacity-25 group-hover:opacity-100 text-zinc-400 dark:text-zinc-600 hover:text-zinc-500 dark:hover:text-zinc-400 transition-all duration-150 text-lg leading-none"
                     aria-label="Remove task"
                   >×</button>
                 </li>
