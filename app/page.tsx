@@ -7,6 +7,12 @@ type Task = {
   id: string;
   title: string;
   completed: boolean;
+  recurringId?: string;
+};
+
+type RecurringTask = {
+  id: string;
+  title: string;
 };
 
 type DayState = {
@@ -27,9 +33,10 @@ type UserStats = {
   lastUpdatedDate: string | null;
 };
 
-const STORAGE_KEY = 'checkboxes-day';
-const STATS_KEY   = 'checkboxes-stats';
-const RECORDS_KEY = 'checkboxes-records';
+const STORAGE_KEY   = 'checkboxes-day';
+const STATS_KEY     = 'checkboxes-stats';
+const RECORDS_KEY   = 'checkboxes-records';
+const RECURRING_KEY = 'checkboxes-recurring';
 
 // Local-date helpers (avoids UTC rollover issues)
 function localDateKey(d: Date): string {
@@ -41,6 +48,18 @@ function getYesterdayKey(): string {
 }
 function addDays(dateKey: string, n: number): string {
   const d = new Date(dateKey + 'T00:00:00'); d.setDate(d.getDate() + n); return localDateKey(d);
+}
+
+function loadRecurring(): RecurringTask[] {
+  try {
+    const raw = localStorage.getItem(RECURRING_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as RecurringTask[];
+  } catch { return []; }
+}
+
+function makeRecurringTasks(templates: RecurringTask[]): Task[] {
+  return templates.map(r => ({ id: crypto.randomUUID(), title: r.title, completed: false, recurringId: r.id }));
 }
 
 function loadState(): DayState {
@@ -96,6 +115,18 @@ function catchUpAllMissedDays(loadedDateKey: string, loadedTasks: Task[], s: Use
   return stats;
 }
 
+function computeStreak(records: Record<string, DailyRecord>, todayKey: string, actualPct: number): number {
+  let streak = actualPct > 0 ? 1 : 0;
+  let cursor = addDays(todayKey, -1);
+  for (let i = 0; i < 366; i++) {
+    const rec = records[cursor];
+    if (!rec?.finalized || rec.completionRate === 0) break;
+    streak++;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+
 const sectionLabel = 'text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-[0.08em]';
 
 export default function Home() {
@@ -108,6 +139,7 @@ export default function Home() {
   const [newTask, setNewTask]           = useState('');
   const [showSummary, setShowSummary]   = useState(false);
   const [graphView, setGraphView]       = useState<'week' | 'month'>('week');
+  const [recurring, setRecurring]       = useState<RecurringTask[]>([]);
   const inputRef         = useRef<HTMLInputElement>(null);
   const taskRefs         = useRef<Map<string, HTMLLIElement>>(new Map());
   const liveTasksRef     = useRef<Task[]>([]);
@@ -124,12 +156,14 @@ export default function Home() {
       const updated = catchUpAllMissedDays(loaded.dateKey, loaded.tasks, loadedStats);
       if (updated !== loadedStats) localStorage.setItem(STATS_KEY, JSON.stringify(updated));
       setStats(updated);
-      setState(loaded.dateKey !== todayKey ? { dateKey: todayKey, tasks: [] } : loaded);
+      setState(loaded.dateKey !== todayKey ? { dateKey: todayKey, tasks: makeRecurringTasks(loadRecurring()) } : loaded);
     } else {
       setState(loaded);
       setStats(loadedStats);
     }
 
+    const loadedRecurring = loadRecurring();
+    setRecurring(loadedRecurring);
     setRecords(loadRecords());
     setDark(localStorage.getItem('dark') === 'true');
     setMounted(true);
@@ -164,7 +198,7 @@ export default function Home() {
       const updated = catchUpAllMissedDays(prevDateKey, liveTasksRef.current, cur);
       if (updated !== cur) { localStorage.setItem(STATS_KEY, JSON.stringify(updated)); setStats(updated); }
       setRecords(loadRecords());
-      setState({ dateKey: todayKey, tasks: [] });
+      setState({ dateKey: todayKey, tasks: makeRecurringTasks(loadRecurring()) });
       setShowSummary(true);
     }
     const id = setInterval(check, 60_000);
@@ -177,7 +211,11 @@ export default function Home() {
     const prev = prevActualPctRef.current;
     prevActualPctRef.current = actualPct;
     const her = stats.historicExecutionRate;
-    if (her !== null && prev < her && actualPct >= her) burstConfetti();
+    if (her === null) {
+      if (actualPct > prev) burstConfetti();
+    } else {
+      if (prev < her && actualPct >= her) burstConfetti();
+    }
   }, [actualPct, mounted, stats.historicExecutionRate]);
 
   function burstConfetti() {
@@ -263,18 +301,33 @@ export default function Home() {
     setState(s => ({ ...s, tasks: s.tasks.filter(t => t.id !== id) }));
   }
 
+  function toggleRecurring(task: Task) {
+    if (task.recurringId) {
+      const updated = recurring.filter(r => r.id !== task.recurringId);
+      localStorage.setItem(RECURRING_KEY, JSON.stringify(updated));
+      setRecurring(updated);
+      setState(s => ({ ...s, tasks: s.tasks.map(t => t.id === task.id ? { ...t, recurringId: undefined } : t) }));
+    } else {
+      const newRec: RecurringTask = { id: crypto.randomUUID(), title: task.title };
+      const updated = [...recurring, newRec];
+      localStorage.setItem(RECURRING_KEY, JSON.stringify(updated));
+      setRecurring(updated);
+      setState(s => ({ ...s, tasks: s.tasks.map(t => t.id === task.id ? { ...t, recurringId: newRec.id } : t) }));
+    }
+  }
+
   if (!mounted) return null;
 
   const dateLabel   = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
   const btnPrimary  = 'w-full py-2.5 sm:py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm rounded-2xl hover:bg-zinc-300 dark:hover:bg-zinc-700 active:scale-[0.97] transition-all duration-150';
   const card        = 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800';
   const her         = stats.historicExecutionRate;
-  const projectedHer = her === null ? actualPct : Math.round((her + actualPct) / 2);
+const today       = getTodayKey();
   const hasHistory  = Object.values(records).some(r => r.finalized);
+  const streak      = computeStreak(records, today, actualPct);
 
   // ── Graph ──────────────────────────────────────────────────────────────────
   const CHART_H = 64;
-  const today   = getTodayKey();
   const graphN  = graphView === 'week' ? 7 : 30;
   const graphData = Array.from({ length: graphN }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (graphN - 1 - i));
@@ -322,7 +375,6 @@ export default function Home() {
             <button
               onClick={() => setShowOnboarding(true)}
               className="w-5 h-5 flex items-center justify-center rounded-full border border-zinc-300 dark:border-zinc-600 text-zinc-400 dark:text-zinc-500 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-all duration-150 text-[11px] font-medium"
-              aria-label="How it works"
             >?</button>
             <p className="text-[10px] font-medium text-zinc-400 uppercase tracking-[0.14em]">check boxes</p>
             <button
@@ -341,7 +393,14 @@ export default function Home() {
               )}
             </button>
           </div>
-          <h1 className="text-sm font-medium text-zinc-400 dark:text-zinc-500">{dateLabel}</h1>
+          <div className="flex items-baseline justify-between">
+            <h1 className="text-sm font-medium text-zinc-400 dark:text-zinc-500">{dateLabel}</h1>
+            {streak > 0 && (
+              <span className="text-[11px] font-medium text-amber-500 dark:text-amber-400 tabular-nums">
+                {streak} day{streak === 1 ? '' : 's'} in a row
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Tasks */}
@@ -379,6 +438,16 @@ export default function Home() {
                   <span className={`flex-1 text-sm leading-snug transition-colors duration-150 ${
                     task.completed ? 'line-through text-zinc-400 dark:text-zinc-600' : 'text-zinc-800 dark:text-zinc-200'
                   }`}>{task.title}</span>
+                  <button
+                    onClick={() => toggleRecurring(task)}
+                    className={`transition-all duration-150 shrink-0 ${task.recurringId ? 'opacity-60 text-zinc-500 dark:text-zinc-400' : 'opacity-0 group-hover:opacity-100 text-zinc-300 dark:text-zinc-600 hover:text-zinc-500 dark:hover:text-zinc-400'}`}
+                    aria-label={task.recurringId ? 'Stop repeating' : 'Repeat daily'}
+                    title={task.recurringId ? 'Repeats daily — click to stop' : 'Repeat daily'}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
                   <button
                     onClick={() => removeTask(task.id)}
                     className="opacity-0 group-hover:opacity-100 text-zinc-400 dark:text-zinc-600 hover:text-zinc-500 dark:hover:text-zinc-400 transition-all duration-150 text-lg leading-none"
@@ -424,14 +493,14 @@ export default function Home() {
                 <div
                   ref={markerRef}
                   className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-0.5 h-3.5 bg-zinc-800 dark:bg-zinc-200 rounded-full transition-[left] duration-700 ease-out"
-                  style={{ left: `${projectedHer}%` }}
+                  style={{ left: `${her === null ? actualPct : her}%` }}
                 />
               </div>
-              {projectedHer > 0 && (
+              {(her !== null || actualPct > 0) && (
                 <div className="relative h-4 mt-1">
                   <span
                     className="absolute -translate-x-1/2 text-[9px] text-zinc-400 dark:text-zinc-600 whitespace-nowrap transition-[left] duration-700 ease-out"
-                    style={{ left: `${projectedHer}%` }}
+                    style={{ left: `${her === null ? actualPct : her}%` }}
                   >
                     historic execution rate
                   </span>
@@ -528,13 +597,12 @@ export default function Home() {
           <div className="animate-summary-card bg-white dark:bg-zinc-900 rounded-3xl p-8 shadow-xl w-full max-w-xs sm:max-w-sm" onClick={e => e.stopPropagation()}>
             <p className={`${sectionLabel} text-center mb-1`}>check boxes</p>
             <p className="text-[11px] text-zinc-400 dark:text-zinc-500 text-center mb-3">Daily Productivity Tool</p>
-            <h2 className="text-lg font-semibold tracking-tight text-zinc-950 dark:text-white text-center mb-6">How it works</h2>
             <ol className="space-y-4 mb-8">
               {[
-                ['Add tasks', 'Add everything you want to get done today.'],
-                ['Check things off', 'Complete tasks as you go — your progress bar updates in real time.'],
-                ['Beat your historic rate', 'A tick mark shows your projected Historic Execution Rate. Try to push it right.'],
-                ['Build your streak', 'At midnight, your Historic Execution Rate updates as a running average of daily completions.'],
+                ['add tasks', 'add everything you want to get done today.'],
+                ['check boxes', 'complete tasks as you go; your progress bar updates in real time.'],
+                ['beat your historic rate', 'a tick mark shows your historic execution rate (average percentage of tasks completed per day).'],
+                ['build your historic rate', 'at midnight, your historic execution rate updates to factor in your progress from the current day.'],
               ].map(([title, desc], i) => (
                 <li key={i} className="flex gap-3.5">
                   <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-600 tabular-nums mt-0.5 shrink-0">{i + 1}</span>
